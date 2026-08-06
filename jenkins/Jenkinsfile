@@ -117,30 +117,34 @@ pipeline {
 
         stage("Trivy Filesystem Scan") {
 
-            steps {
+    steps {
 
-                bat """
-                docker run --rm ^
-                -v %cd%:/workspace ^
-                aquasec/trivy:latest fs ^
-                --format template ^
-                --template "@contrib/html.tpl" ^
-                -o /workspace/trivy-report.html ^
-                /workspace
-                """
+        bat """
+        docker run --rm ^
+        -v %cd%:/workspace ^
+        aquasec/trivy:latest fs ^
+        --timeout 30m ^
+        --scanners vuln ^
+        --skip-dirs .git ^
+        --skip-dirs .scannerwork ^
+        --skip-dirs application/frontend/node_modules ^
+        --skip-dirs application/backend/node_modules ^
+        --format template ^
+        --template "@contrib/html.tpl" ^
+        -o /workspace/trivy-report.html ^
+        /workspace
+        """
 
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: ".",
-                    reportFiles: "trivy-report.html",
-                    reportName: "Trivy FS Report"
-                ])
-
-            }
-
-        }
+        publishHTML([
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: ".",
+            reportFiles: "trivy-report.html",
+            reportName: "Trivy FS Report"
+        ])
+    }
+}
 
         stage("Build Backend Image") {
 
