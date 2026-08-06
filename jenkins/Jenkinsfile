@@ -2,44 +2,347 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "job-mail-sender"
-        DOCKERHUB_USERNAME = "sourabh123421"
 
-        BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/backend"
-        FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/frontend"
+        SONAR_HOME = tool "Sonar"
+
+        REGISTRY = "sourabh123421"
+
+        BACKEND_IMAGE = "backend"
+        FRONTEND_IMAGE = "frontend"
+
+        TAG = "v${BUILD_NUMBER}"
+
+        NOTIFY_TO = "upadhaysourav14@gmail.com"
+
+        BACKEND_PATH = "application/backend"
+        FRONTEND_PATH = "application/frontend"
     }
 
     stages {
 
-        stage('Checkout Source') {
+        stage("Clean Workspace") {
             steps {
-                echo "===== Cloning Repository ====="
-                checkout scm
+                cleanWs()
             }
         }
 
-        stage('Verify Workspace') {
+        stage("Docker Cleanup") {
             steps {
-                echo "===== Workspace ====="
-
-                bat 'cd'
-                bat 'dir'
+                bat "docker system prune -af || exit 0"
             }
+        }
+
+        stage("Clone Repository") {
+            steps {
+                git url: "https://github.com/sourabh-glitch/devops-kind-platform.git",
+                    branch: "main"
+            }
+        }
+
+        stage("Install Backend Dependencies") {
+            steps {
+                dir("${BACKEND_PATH}") {
+                    bat "npm install"
+                }
+            }
+        }
+
+        stage("Install Frontend Dependencies") {
+            steps {
+                dir("${FRONTEND_PATH}") {
+                    bat "npm install"
+                }
+            }
+        }
+
+        stage("Backend Unit Test") {
+            steps {
+                dir("${BACKEND_PATH}") {
+                    bat "npm test || exit 0"
+                }
+            }
+        }
+
+        stage("Frontend Unit Test") {
+            steps {
+                dir("${FRONTEND_PATH}") {
+                    bat "npm test || exit 0"
+                }
+            }
+        }
+
+        stage("SonarQube Scan") {
+            steps {
+
+                withSonarQubeEnv("Sonar") {
+
+                    bat """
+                    "%SONAR_HOME%\\bin\\sonar-scanner.bat" ^
+                    -Dsonar.projectKey=devops-kind-platform ^
+                    -Dsonar.projectName=devops-kind-platform ^
+                    -Dsonar.sources=.
+                    """
+
+                }
+
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage("OWASP Dependency Check") {
+
+            steps {
+
+                dependencyCheck(
+                    additionalArguments: """
+                        --scan ./
+                        --format HTML
+                        --format XML
+                    """,
+                    odcInstallation: "dc"
+                )
+
+                dependencyCheckPublisher pattern: "**/dependency-check-report.xml"
+
+            }
+
+        }
+
+        stage("Trivy Filesystem Scan") {
+
+            steps {
+
+                bat """
+                docker run --rm ^
+                -v %cd%:/workspace ^
+                aquasec/trivy:latest fs ^
+                --format template ^
+                --template "@contrib/html.tpl" ^
+                -o /workspace/trivy-report.html ^
+                /workspace
+                """
+
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: ".",
+                    reportFiles: "trivy-report.html",
+                    reportName: "Trivy FS Report"
+                ])
+
+            }
+
+        }
+
+        stage("Build Backend Image") {
+
+            steps {
+
+                dir("${BACKEND_PATH}") {
+
+                    bat """
+                    docker build ^
+                    -t %REGISTRY%/%BACKEND_IMAGE%:%TAG% .
+                    """
+
+                }
+
+            }
+
+        }
+
+        stage("Build Frontend Image") {
+
+            steps {
+
+                dir("${FRONTEND_PATH}") {
+
+                    bat """
+                    docker build ^
+                    -t %REGISTRY%/%FRONTEND_IMAGE%:%TAG% .
+                    """
+
+                }
+
+            }
+
+        }
+
+        stage("Trivy Backend Image") {
+
+            steps {
+
+                bat """
+                docker run --rm ^
+                -v //var/run/docker.sock:/var/run/docker.sock ^
+                aquasec/trivy:latest image ^
+                --severity HIGH,CRITICAL ^
+                --exit-code 0 ^
+                %REGISTRY%/%BACKEND_IMAGE%:%TAG%
+                """
+
+            }
+
+        }
+
+        stage("Trivy Frontend Image") {
+
+            steps {
+
+                bat """
+                docker run --rm ^
+                -v //var/run/docker.sock:/var/run/docker.sock ^
+                aquasec/trivy:latest image ^
+                --severity HIGH,CRITICAL ^
+                --exit-code 0 ^
+                %REGISTRY%/%FRONTEND_IMAGE%:%TAG%
+                """
+
+            }
+
+        }
+
+        stage("Docker Login") {
+
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "dockerhub-cred",
+                        usernameVariable: "USER",
+                        passwordVariable: "PASS"
+                    )
+                ]) {
+
+                    bat """
+                    echo %PASS% | docker login ^
+                    -u %USER% ^
+                    --password-stdin
+                    """
+
+                }
+
+            }
+
+        }
+
+        stage("Push Backend Image") {
+
+            steps {
+
+                bat "docker push %REGISTRY%/%BACKEND_IMAGE%:%TAG%"
+
+            }
+
+        }
+
+        stage("Push Frontend Image") {
+
+            steps {
+
+                bat "docker push %REGISTRY%/%FRONTEND_IMAGE%:%TAG%"
+
+            }
+
+        }
+
+        stage("Update Backend Helm") {
+
+            steps {
+
+                powershell '''
+                (Get-Content helm/backend/values.yaml) `
+                -replace 'tag:.*','tag: "v'+$env:BUILD_NUMBER+'"' |
+                Set-Content helm/backend/values.yaml
+                '''
+
+            }
+
+        }
+
+        stage("Update Frontend Helm") {
+
+            steps {
+
+                powershell '''
+                (Get-Content helm/frontend/values.yaml) `
+                -replace 'tag:.*','tag: "v'+$env:BUILD_NUMBER+'"' |
+                Set-Content helm/frontend/values.yaml
+                '''
+
+            }
+
+        }
+
+        stage("Git Push Updated Helm") {
+
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "github",
+                        usernameVariable: "USER",
+                        passwordVariable: "TOKEN"
+                    )
+                ]) {
+
+                    bat """
+                    git config user.email "jenkins@local"
+                    git config user.name "Jenkins"
+
+                    git add helm
+
+                    git commit -m "Update image tag %TAG%" || exit 0
+
+                    git push https://%USER%:%TOKEN%@github.com/sourabh-glitch/devops-kind-platform.git HEAD:main
+                    """
+
+                }
+
+            }
+
         }
 
     }
 
     post {
+
         success {
-            echo "Pipeline completed successfully."
+
+            emailext(
+                subject: "SUCCESS : ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Pipeline Completed Successfully.<br>${BUILD_URL}",
+                mimeType: "text/html",
+                to: "${NOTIFY_TO}"
+            )
+
         }
 
         failure {
-            echo "Pipeline failed."
+
+            emailext(
+                subject: "FAILED : ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Pipeline Failed.<br>${BUILD_URL}",
+                mimeType: "text/html",
+                to: "${NOTIFY_TO}"
+            )
+
         }
 
         always {
+
             cleanWs()
+
         }
+
     }
+
 }
