@@ -1,0 +1,25 @@
+image:
+  repository: mongo
+  tag: "8"
+
+replicaCount: 1
+
+service:
+  port: 27017
+
+auth:
+  username: admin
+  password: admin123
+  database: jobmail
+
+storage:
+  size: 2Gi
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

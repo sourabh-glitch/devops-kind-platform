@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = "job-mail-sender"
+        DOCKERHUB_USERNAME = "sourabh123421"
+
+        BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/backend"
+        FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/frontend"
+    }
+
+    stages {
+
+        stage('Checkout Source') {
+            steps {
+                echo "===== Cloning Repository ====="
+                checkout scm
+            }
+        }
+
+        stage('Verify Workspace') {
+            steps {
+                echo "===== Workspace ====="
+
+                bat 'cd'
+                bat 'dir'
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully."
+        }
+
+        failure {
+            echo "Pipeline failed."
+        }
+
+        always {
+            cleanWs()
+        }
+    }
+}

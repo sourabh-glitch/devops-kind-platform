@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: {{ include "mongodb.fullname" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+
+spec:
+  serviceName: {{ include "mongodb.fullname" . }}
+
+  replicas: {{ .Values.replicaCount }}
+
+  selector:
+    matchLabels:
+      app: {{ include "mongodb.name" . }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ include "mongodb.name" . }}
+
+    spec:
+      containers:
+        - name: mongodb
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          ports:
+            - containerPort: {{ .Values.service.port }}
+
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}
+                  key: MONGO_INITDB_ROOT_USERNAME
+
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}
+                  key: MONGO_INITDB_ROOT_PASSWORD
+
+            - name: MONGO_INITDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}
+                  key: MONGO_INITDB_DATABASE
+
+          volumeMounts:
+            - name: mongodb-storage
+              mountPath: /data/db
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: mongodb-storage
+
+      spec:
+        accessModes:
+          - ReadWriteOnce
+
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}
+
+        {{- if .Values.storage.storageClass }}
+        storageClassName: {{ .Values.storage.storageClass }}
+        {{- end }}
