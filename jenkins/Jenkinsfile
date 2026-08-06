@@ -259,32 +259,28 @@ pipeline {
         }
 
         stage("Update Backend Helm") {
+    steps {
+        powershell '''
+        (Get-Content helm/backend/values.yaml) |
+        ForEach-Object {
+            $_ -replace '^(\s*tag:\s*).*$',"`${1}v$($env:BUILD_NUMBER)"
+        } |
+        Set-Content helm/backend/values.yaml
+        '''
+    }
+}
 
-            steps {
-
-                powershell '''
-                (Get-Content helm/backend/values.yaml) `
-                -replace 'tag:.*','tag: "v'+$env:BUILD_NUMBER+'"' |
-                Set-Content helm/backend/values.yaml
-                '''
-
-            }
-
-        }
-
-        stage("Update Frontend Helm") {
-
-            steps {
-
-                powershell '''
-                (Get-Content helm/frontend/values.yaml) `
-                -replace 'tag:.*','tag: "v'+$env:BUILD_NUMBER+'"' |
-                Set-Content helm/frontend/values.yaml
-                '''
-
-            }
-
-        }
+      stage("Update Frontend Helm") {
+    steps {
+        powershell '''
+        (Get-Content helm/frontend/values.yaml) |
+        ForEach-Object {
+            $_ -replace '^(\s*tag:\s*).*$',"`${1}v$($env:BUILD_NUMBER)"
+        } |
+        Set-Content helm/frontend/values.yaml
+        '''
+    }
+}
 
         stage("Git Push Updated Helm") {
 
