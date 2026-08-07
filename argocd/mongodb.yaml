@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mongodb
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/sourabh-glitch/devops-kind-platform.git
+    targetRevision: main
+    path: helm/mongodb
+
+    helm:
+      releaseName: mongodb
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: three-tier
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
