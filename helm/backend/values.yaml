@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: sourabh123421/backend
-  tag: "v1"
+  tag: "v11"
   pullPolicy: IfNotPresent
 
 service:
