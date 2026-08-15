@@ -1,0 +1,735 @@
+apiVersion: 1
+
+groups:
+
+  # ==========================================================
+  # NODE ALERTS
+  # ==========================================================
+  - orgId: 1
+    name: Kubernetes Node Alerts
+    folder: Kubernetes
+    interval: 1m
+
+    rules:
+
+      # --------------------------------------------------------
+      # NODE CPU HIGH
+      # --------------------------------------------------------
+      - uid: node-cpu-high
+        title: Node CPU Usage High
+        condition: B
+        for: 5m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                100 * (
+                  1 - avg by(instance) (
+                    rate(node_cpu_seconds_total{mode="idle"}[5m])
+                  )
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [80]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: node
+
+        annotations:
+          summary: "High CPU usage on node"
+          description: "Node {{ $labels.instance }} CPU usage is above 80% for 5 minutes."
+
+
+      # --------------------------------------------------------
+      # NODE MEMORY HIGH
+      # --------------------------------------------------------
+      - uid: node-memory-high
+        title: Node Memory Usage High
+        condition: B
+        for: 5m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                100 * (
+                  1 -
+                  node_memory_MemAvailable_bytes /
+                  node_memory_MemTotal_bytes
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [80]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: node
+
+        annotations:
+          summary: "High memory usage on node"
+          description: "Node memory usage is above 80% for 5 minutes."
+
+
+      # --------------------------------------------------------
+      # NODE DISK HIGH
+      # --------------------------------------------------------
+      - uid: node-disk-high
+        title: Node Disk Usage High
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                100 * (
+                  1 -
+                  (
+                    node_filesystem_avail_bytes{
+                      mountpoint="/var",
+                      fstype="ext4"
+                    }
+                    /
+                    node_filesystem_size_bytes{
+                      mountpoint="/var",
+                      fstype="ext4"
+                    }
+                  )
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [80]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: node
+
+        annotations:
+          summary: "High disk usage on node"
+          description: "Filesystem usage on node {{ $labels.instance }} mountpoint {{ $labels.mountpoint }} is above 80% for 10 minutes."
+
+
+      # --------------------------------------------------------
+      # NODE NOT READY
+      # --------------------------------------------------------
+      - uid: node-not-ready
+        title: Kubernetes Node Not Ready
+        condition: B
+        for: 5m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                max by (node) (
+                  kube_node_status_condition{
+                    condition="Ready",
+                    status="true"
+                  }
+                ) == bool 0
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: critical
+          category: node
+
+        annotations:
+          summary: "Kubernetes node is not ready"
+          description: "Node {{ $labels.node }} has been NotReady for more than 5 minutes."
+
+
+  # ==========================================================
+  # POD ALERTS
+  # ==========================================================
+  - orgId: 1
+    name: Kubernetes Pod Alerts
+    folder: Kubernetes
+    interval: 1m
+
+    rules:
+
+      # --------------------------------------------------------
+      # POD CRASHLOOP
+      # --------------------------------------------------------
+      - uid: pod-crashlooping
+        title: Pod CrashLoopBackOff
+        condition: B
+        for: 5m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                sum by (namespace, pod) (
+                  kube_pod_container_status_waiting_reason{
+                    reason="CrashLoopBackOff"
+                  }
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: critical
+          category: pod
+
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} is in CrashLoopBackOff."
+
+
+      # --------------------------------------------------------
+      # POD PENDING
+      # --------------------------------------------------------
+      - uid: pod-pending
+        title: Pod Stuck Pending
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                max by (namespace, pod) (
+                  kube_pod_status_phase{
+                    phase="Pending"
+                  }
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: pod
+
+        annotations:
+          summary: "Pod stuck in Pending"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been Pending for more than 10 minutes."
+
+
+      # --------------------------------------------------------
+      # POD NOT READY
+      # --------------------------------------------------------
+      - uid: pod-not-ready
+        title: Pod Not Ready
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                kube_pod_status_ready{
+                  condition="false"
+                } == 1
+                and on(namespace, pod)
+                kube_pod_status_phase{
+                  phase="Running"
+                } == 1
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: pod
+
+        annotations:
+          summary: "Pod is not ready"
+          description: "Running pod {{ $labels.namespace }}/{{ $labels.pod }} is not Ready."
+
+
+      # --------------------------------------------------------
+      # POD RESTARTS
+      # --------------------------------------------------------
+      - uid: pod-restarts-high
+        title: Pod Restarting Frequently
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                sum by(namespace, pod) (
+                  increase(kube_pod_container_status_restarts_total[10m])
+                )
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [5]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: pod
+
+        annotations:
+          summary: "Pod restarting frequently"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than 5 times in 10 minutes."
+
+
+  # ==========================================================
+  # WORKLOAD ALERTS
+  # ==========================================================
+  - orgId: 1
+    name: Kubernetes Workload Alerts
+    folder: Kubernetes
+    interval: 1m
+
+    rules:
+
+      # --------------------------------------------------------
+      # DEPLOYMENT REPLICAS MISMATCH
+      # --------------------------------------------------------
+      - uid: deployment-replicas-mismatch
+        title: Deployment Replicas Mismatch
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                (
+                  kube_deployment_spec_replicas
+                  -
+                  kube_deployment_status_available_replicas
+                ) > 0
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: workload
+
+        annotations:
+          summary: "Deployment replicas mismatch"
+          description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} does not have the expected available replicas."
+
+
+      # --------------------------------------------------------
+      # STATEFULSET REPLICAS MISMATCH
+      # --------------------------------------------------------
+      - uid: statefulset-replicas-mismatch
+        title: StatefulSet Replicas Mismatch
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                (
+                  kube_statefulset_replicas
+                  -
+                  on(namespace, statefulset)
+                  kube_statefulset_status_replicas_ready
+                ) > bool 0
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: workload
+
+        annotations:
+          summary: "StatefulSet replicas mismatch"
+          description: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} does not have the expected ready replicas."
+
+
+      # --------------------------------------------------------
+      # DAEMONSET NOT READY
+      # --------------------------------------------------------
+      - uid: daemonset-not-ready
+        title: DaemonSet Not Ready
+        condition: B
+        for: 10m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                (
+                  kube_daemonset_status_desired_number_scheduled
+                  -
+                  kube_daemonset_status_number_ready
+                ) > bool 0
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: workload
+
+        annotations:
+          summary: "DaemonSet pods are not ready"
+          description: "DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} has fewer ready pods than desired."
+
+
+      # --------------------------------------------------------
+      # JOB FAILED
+      # --------------------------------------------------------
+      - uid: job-failed
+        title: Kubernetes Job Failed
+        condition: B
+        for: 5m
+
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                sum(kube_job_status_failed) or vector(0)
+              instant: true
+              refId: A
+
+          - refId: B
+            datasourceUid: "-100"
+            model:
+              expression: A
+              refId: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+
+        labels:
+          severity: warning
+          category: workload
+
+        annotations:
+          summary: "Kubernetes Job failed"
+          description: "Job {{ $labels.namespace }}/{{ $labels.job_name }} has failed."

@@ -1,0 +1,14 @@
+grafana:
+  dashboardsConfigMaps:
+    default: grafana-dashboards
+  env:
+    GF_SMTP_PASSWORD: ${GF_SMTP_PASSWORD}
+  grafana.ini:
+    smtp:
+      enabled: true
+      from_address: upadhaysourav14@gmail.com
+      from_name: Grafana
+      host: smtp.gmail.com:587
+      password: $__env{GF_SMTP_PASSWORD}
+      startTLS_policy: MandatoryStartTLS
+      user: upadhaysourav14@gmail.com

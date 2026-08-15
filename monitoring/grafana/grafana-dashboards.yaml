@@ -1,0 +1,441 @@
+apiVersion: v1
+data:
+  kubernetes-cluster.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Nodes Ready",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value"
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Running Pods",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{phase=\"Running\"})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value"
+          }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Cluster CPU Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
+              "legendFormat": "CPU Usage %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Cluster Memory Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes))",
+              "legendFormat": "Memory Usage %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Node CPU Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Node Memory Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Pod CPU Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container!=\"\",container!=\"POD\",image!=\"\"}[5m]))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "cores"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Pod Memory Usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{container!=\"\",container!=\"POD\",image!=\"\"})",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Pod Restarts",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total[1h]))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "style": "dark",
+      "tags": [
+        "kubernetes",
+        "devops",
+        "prometheus"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Kubernetes Cluster Overview",
+      "uid": "kubernetes-cluster",
+      "version": 1,
+      "weekStart": ""
+    }
+  kubernetes-logs.json: "{\r\n  \"annotations\": {\r\n    \"list\": []\r\n  },\r\n
+    \ \"editable\": true,\r\n  \"graphTooltip\": 1,\r\n  \"panels\": [\r\n    {\r\n
+    \     \"id\": 1,\r\n      \"type\": \"logs\",\r\n      \"title\": \"Kubernetes
+    Logs\",\r\n      \"datasource\": {\r\n        \"type\": \"loki\",\r\n        \"uid\":
+    \"loki\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 14,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 0\r\n      },\r\n      \"options\":
+    {\r\n        \"showTime\": true,\r\n        \"showLabels\": true,\r\n        \"showCommonLabels\":
+    false,\r\n        \"wrapLines\": true,\r\n        \"prettifyLogMessage\": false,\r\n
+    \       \"enableLogDetails\": true,\r\n        \"deduplication\": \"none\",\r\n
+    \       \"sortOrder\": \"Descending\"\r\n      },\r\n      \"targets\": [\r\n
+    \       {\r\n          \"refId\": \"A\",\r\n          \"expr\": \"{namespace=~\\\".+\\\"}\"\r\n
+    \       }\r\n      ]\r\n    },\r\n    {\r\n      \"id\": 2,\r\n      \"type\":
+    \"logs\",\r\n      \"title\": \"Error Logs\",\r\n      \"datasource\": {\r\n        \"type\":
+    \"loki\",\r\n        \"uid\": \"loki\"\r\n      },\r\n      \"gridPos\": {\r\n
+    \       \"h\": 12,\r\n        \"w\": 24,\r\n        \"x\": 0,\r\n        \"y\":
+    14\r\n      },\r\n      \"options\": {\r\n        \"showTime\": true,\r\n        \"showLabels\":
+    true,\r\n        \"showCommonLabels\": false,\r\n        \"wrapLines\": true,\r\n
+    \       \"prettifyLogMessage\": false,\r\n        \"enableLogDetails\": true,\r\n
+    \       \"deduplication\": \"none\",\r\n        \"sortOrder\": \"Descending\"\r\n
+    \     },\r\n      \"targets\": [\r\n        {\r\n          \"refId\": \"A\",\r\n
+    \         \"expr\": \"{namespace=~\\\".+\\\"} |~ \\\"(?i)error|exception|failed\\\"\"\r\n
+    \       }\r\n      ]\r\n    },\r\n    {\r\n      \"id\": 3,\r\n      \"type\":
+    \"timeseries\",\r\n      \"title\": \"Log Volume by Namespace\",\r\n      \"datasource\":
+    {\r\n        \"type\": \"loki\",\r\n        \"uid\": \"loki\"\r\n      },\r\n
+    \     \"gridPos\": {\r\n        \"h\": 10,\r\n        \"w\": 24,\r\n        \"x\":
+    0,\r\n        \"y\": 26\r\n      },\r\n      \"targets\": [\r\n        {\r\n          \"refId\":
+    \"A\",\r\n          \"expr\": \"sum by (namespace) (count_over_time({namespace=~\\\".+\\\"}[5m]))\",\r\n
+    \         \"legendFormat\": \"{{namespace}}\"\r\n        }\r\n      ],\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"unit\": \"short\"\r\n        },\r\n
+    \       \"overrides\": []\r\n      },\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"displayMode\": \"list\",\r\n          \"placement\": \"bottom\"\r\n
+    \       },\r\n        \"tooltip\": {\r\n          \"mode\": \"multi\"\r\n        }\r\n
+    \     }\r\n    }\r\n  ],\r\n  \"refresh\": \"10s\",\r\n  \"schemaVersion\": 39,\r\n
+    \ \"style\": \"dark\",\r\n  \"tags\": [\r\n    \"kubernetes\",\r\n    \"logs\",\r\n
+    \   \"loki\"\r\n  ],\r\n  \"templating\": {\r\n    \"list\": [\r\n      {\r\n
+    \       \"name\": \"namespace\",\r\n        \"label\": \"Namespace\",\r\n        \"type\":
+    \"query\",\r\n        \"datasource\": {\r\n          \"type\": \"loki\",\r\n          \"uid\":
+    \"loki\"\r\n        },\r\n        \"query\": \"label_values(namespace)\",\r\n
+    \       \"refresh\": 1,\r\n        \"includeAll\": true,\r\n        \"multi\":
+    true,\r\n        \"allValue\": \".*\",\r\n        \"hide\": 0\r\n      }\r\n    ]\r\n
+    \ },\r\n  \"time\": {\r\n    \"from\": \"now-1h\",\r\n    \"to\": \"now\"\r\n
+    \ },\r\n  \"timezone\": \"browser\",\r\n  \"title\": \"Kubernetes Logs\",\r\n
+    \ \"uid\": \"kubernetes-logs\",\r\n  \"version\": 2\r\n}"
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring

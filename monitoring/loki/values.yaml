@@ -1,0 +1,136 @@
+# ============================================================
+# Grafana Loki - Monolithic / Single Replica
+# Kind Kubernetes Development Environment
+# ============================================================
+
+deploymentMode: Monolithic
+
+# ============================================================
+# Loki
+# ============================================================
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  storage:
+    type: filesystem
+
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+
+# ============================================================
+# Monolithic Loki
+# ============================================================
+singleBinary:
+  replicas: 1
+
+  persistence:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# ============================================================
+# Disable Simple Scalable components
+# ============================================================
+backend:
+  replicas: 0
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+# ============================================================
+# Disable Microservices components
+# ============================================================
+ingester:
+  replicas: 0
+
+querier:
+  replicas: 0
+
+queryFrontend:
+  replicas: 0
+
+queryScheduler:
+  replicas: 0
+
+distributor:
+  replicas: 0
+
+compactor:
+  replicas: 0
+
+indexGateway:
+  replicas: 0
+
+bloomPlanner:
+  replicas: 0
+
+bloomBuilder:
+  replicas: 0
+
+bloomGateway:
+  replicas: 0
+
+# ============================================================
+# Gateway
+# ============================================================
+gateway:
+  enabled: true
+  replicas: 1
+
+# ============================================================
+# Caches
+#
+# Disabled for Kind to reduce resource usage and avoid
+# unnecessary Memcached pods.
+# ============================================================
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+# ============================================================
+# Loki Canary
+# ============================================================
+lokiCanary:
+  enabled: true
+
+# ============================================================
+# Monitoring
+# ============================================================
+monitoring:
+  serviceMonitor:
+    enabled: false
+
+  selfMonitoring:
+    enabled: false
+
+# ============================================================
+# Tests
+# ============================================================
+test:
+  enabled: false
